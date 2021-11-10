@@ -231,20 +231,12 @@ return ' . var_export($this->storedProxyClasses, true) . ';';
     protected function cacheOriginalClassFileAndProxyCode($className, $pathAndFilename, $proxyClassCode)
     {
         $classCode = file_get_contents($pathAndFilename);
+        $classCode = $this->replaceClassName($classCode, $pathAndFilename);
         $classCode = $this->stripOpeningPhpTag($classCode);
-
-        $classNameSuffix = self::ORIGINAL_CLASSNAME_SUFFIX;
-        $classCode = preg_replace_callback('/^([a-z\s]*?)(final\s+)?(interface|class)\s+([a-zA-Z0-9_]+)/m', function ($matches) use ($pathAndFilename, $classNameSuffix, $proxyClassCode) {
-            $classNameAccordingToFileName = basename($pathAndFilename, '.php');
-            if ($matches[4] !== $classNameAccordingToFileName) {
-                throw new Exception('The name of the class "' . $matches[4] . '" is not the same as the filename which is "' . basename($pathAndFilename) . '". Path: ' . $pathAndFilename, 1398356897);
-            }
-            return $matches[1] . $matches[3] . ' ' . $matches[4] . $classNameSuffix;
-        }, $classCode);
 
         // comment out "final" keyword, if the method is final and if it is advised (= part of the $proxyClassCode)
         // Note: Method name regex according to http://php.net/manual/en/language.oop5.basic.php
-        $classCode = preg_replace_callback('/^(\s*)((public|protected)\s+)?final(\s+(public|protected))?(\s+function\s+)([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]+\s*\()/m', function ($matches) use ($pathAndFilename, $classNameSuffix, $proxyClassCode) {
+        $classCode = preg_replace_callback('/^(\s*)((public|protected)\s+)?final(\s+(public|protected))?(\s+function\s+)([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]+\s*\()/m', function ($matches) use ($pathAndFilename, $proxyClassCode) {
             // the method is not advised => don't remove the final keyword
             if (strpos($proxyClassCode, $matches[0]) === false) {
                 return $matches[0];
@@ -348,5 +340,46 @@ return ' . var_export($this->storedProxyClasses, true) . ';';
             $values[] = $value;
         }
         return '{ ' . implode(', ', $values) . ' }';
+    }
+
+    /**
+     * Appends ORIGINAL_CLASSNAME_SUFFIX to the original class name
+     *
+     * @param string $classCode
+     * @param string $pathAndFilename
+     * @return string
+     * @throws Exception
+     */
+    protected function replaceClassName(string $classCode, string $pathAndFilename): string
+    {
+        $tokens = token_get_all($classCode);
+        $previousToken = [0 => null];
+        foreach ($tokens as $token) {
+            if (isset($classToken) && is_array($token) && $token[0] === T_STRING) {
+                $detectedClassName = $token[1];
+                $lines = explode(PHP_EOL, $classCode);
+
+                // We can't allow Unicode characters for class names even though PHP does, because such class names
+                // don't qualify as valid cache entry identifiers.
+                $classTokenLine = preg_replace('/([a-z\s]*?)(final\s+)?(interface|class)\s+([a-zA-Z0-9_]+)/', '$1$3 $4' . self::ORIGINAL_CLASSNAME_SUFFIX, $lines[$token[2] - 1]);
+                $lines[$token[2] - 1] = $classTokenLine;
+                $classCode = implode(PHP_EOL, $lines);
+                break;
+            }
+            if (is_array($token) && $token[0] === T_CLASS && $previousToken[0] !== T_DOUBLE_COLON) {
+                $classToken = $token;
+            }
+            $previousToken = $token;
+        }
+
+        if (!isset($classToken) || !isset($detectedClassName)) {
+            throw new Exception('No class token found in class file "' . basename($pathAndFilename) . '". Path: ' . $pathAndFilename, 1636575752);
+        }
+
+        $classNameAccordingToFileName = basename($pathAndFilename, '.php');
+        if ($detectedClassName !== $classNameAccordingToFileName) {
+            throw new Exception('The name of the class "' . $detectedClassName . '" is not the same as the filename which is "' . basename($pathAndFilename) . '". Path: ' . $pathAndFilename, 1398356897);
+        }
+        return $classCode;
     }
 }

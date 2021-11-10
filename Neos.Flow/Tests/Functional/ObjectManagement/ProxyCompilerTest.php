@@ -134,6 +134,14 @@ class ProxyCompilerTest extends FunctionalTestCase
         self::assertTrue($reflectionClass->isFinal());
     }
 
+    /**
+     * @test
+     */
+    public function classKeywordIsIgnoredInsideClassBody()
+    {
+        $reflectionClass = new ClassReflection(Fixtures\ClassWithKeywordsInClassBody::class);
+        self::assertEquals($reflectionClass->getNamespaceName() . '\ClassWithKeywordsInClassBody', Fixtures\ClassWithKeywordsInClassBody::class);
+    }
 
     /**
      * @test
