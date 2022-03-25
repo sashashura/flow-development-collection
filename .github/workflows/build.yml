@@ -16,25 +16,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ['7.3', '7.4']
+        php-versions: ['8.0', '8.1']
         dependencies: ['highest']
         composer-arguments: [''] # to run --ignore-platform-reqs in experimental builds
         static-analysis: ['no']
         experimental: [false]
         include:
-          - php-versions: '7.3'
+          - php-versions: '8.0'
             static-analysis: 'psalm'
-            experimental: false
+            experimental: true
             dependencies: 'highest'
 
-          # Experimental build for PHP 8
-          #- php-versions: '8.0'
+          # Experimental build for PHP nightly
+          #- php-versions: 'nightly'
           #  composer-arguments: '--ignore-platform-reqs'
           #  static-analysis: 'no'
           #  experimental: true
           #  dependencies: 'highest'
 
-          # Build for minimum dependencies. Fails right now, hence deactivated.
+          # Build for minimum dependencies.
           #- php-versions: '7.3'
           #  static-analysis: 'no'
           #  experimental: false
@@ -158,6 +158,15 @@ jobs:
         if: matrix.static-analysis == 'psalm'
         run: composer test-static
 
+      - name: Update psalm baseline
+        if: ${{ failure() && github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
+        run: |
+          composer psalm-baseline-update
+          cd ./Packages/Framework
+          git add psalm-baseline.xml
+          git -c user.name='gh-action' -c user.email='gh-action@noreply.github.com' commit -m "TASK: Update psalm-baseline"
+          git push -f origin HEAD:${FLOW_TARGET_VERSION}
+
       - name: Run unit tests
         if: matrix.static-analysis == 'no'
         run: composer test-unit -- --verbose
@@ -167,10 +176,10 @@ jobs:
         run: composer test-func -- --verbose
 
       - name: Run behat tests
-        if: matrix.static-analysis == 'no'
+        if: ${{ matrix.static-analysis == 'no' && matrix.dependencies != 'lowest' }}
         #if: env.BEHAT == true
         run: |
-          FLOW_CONTEXT=Testing/Behat ./flow behat:setup && ./flow doctrine:create
+          FLOW_CONTEXT=Testing/Behat ./flow behat:setup && ./flow doctrine:create && ./flow doctrine:migrationversion --add --version all
           bin/behat --stop-on-failure -f progress -c Packages/Framework/Neos.Flow/Tests/Behavior/behat.yml.dist
 
       - name: Setup Flow configuration (PGSQL)
@@ -204,10 +213,10 @@ jobs:
         run: composer test-func -- --verbose
 
       - name: Run behat tests (PGSQL)
-        if: matrix.static-analysis == 'no'
+        if: ${{ matrix.static-analysis == 'no' && matrix.dependencies != 'lowest' }}
         #if: env.BEHAT == true
         run: |
-          FLOW_CONTEXT=Testing/Behat ./flow behat:setup && ./flow doctrine:create
+          FLOW_CONTEXT=Testing/Behat ./flow behat:setup && ./flow doctrine:create && ./flow doctrine:migrationversion --add --version all
           bin/behat --stop-on-failure -f progress -c Packages/Framework/Neos.Flow/Tests/Behavior/behat.yml.dist
 
   buildall:
