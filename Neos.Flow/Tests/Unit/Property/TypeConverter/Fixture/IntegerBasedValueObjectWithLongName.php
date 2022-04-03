@@ -11,40 +11,40 @@ namespace Neos\Flow\Tests\Unit\Property\TypeConverter\Fixture;
  * source code.
  */
 
-final class StringBasedValueObject implements \JsonSerializable
+final class IntegerBasedValueObjectWithLongName implements \JsonSerializable
 {
     /**
-     * @var string
+     * @var int
      */
     private $value;
 
     /**
-     * @param string $value
+     * @param int $value
      */
-    private function __construct(string $value)
+    private function __construct(int $value)
     {
         $this->value = $value;
     }
 
     /**
-     * @param string $string
+     * @param int $int
      * @return self
      */
-    public static function fromString(string $string): self
+    public static function fromInteger(int $int): self
     {
-        return new self($string);
+        return new self($int);
     }
 
     /**
-     * @return string
+     * @return int
      */
-    public function getValue(): string
+    public function getValue(): int
     {
         return $this->value;
     }
 
     /**
-     * @return string
+     * @return int
      */
     public function jsonSerialize(): mixed
     {
