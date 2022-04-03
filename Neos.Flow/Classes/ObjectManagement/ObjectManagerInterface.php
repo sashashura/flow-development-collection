@@ -43,21 +43,21 @@ interface ObjectManagerInterface extends ContainerInterface
      * new keyword and Singleton objects should rather be injected by some type of
      * Dependency Injection.
      *
-     * @param string $objectName The name of the object to return an instance of
+     * @param string $id The name of the object to return an instance of
      * @param mixed[] ...$constructorArguments Any number of arguments that should be passed to the constructor of the object
      * @return object The object instance
      * @api
      */
-    public function get(string $objectName, ...$constructorArguments);
+    public function get(string $id, ...$constructorArguments);
 
     /**
      * This is the PSR-11 ContainerInterface equivalent to `isRegistered`.
      *
-     * @param string $objectName
+     * @param string $id
      * @return bool
      * @see isRegistered
      */
-    public function has(string $objectName): bool;
+    public function has(string $id): bool;
 
     /**
      * Returns true if an object with the given name has already
