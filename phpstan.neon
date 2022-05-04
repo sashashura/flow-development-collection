@@ -1,0 +1,23 @@
+includes:
+  - vendor/phpstan/phpstan-doctrine/extension.neon
+  - vendor/phpstan/phpstan-doctrine/rules.neon
+  - vendor/phpstan/phpstan-phpunit/extension.neon
+  - vendor/phpstan/phpstan-phpunit/rules.neon
+parameters:
+	level: 0
+	paths:
+		- './'
+	bootstrapFiles:
+		- phpstan.bootstrap.php
+	excludePaths:
+		- 'rector.php'
+		- 'phpstan.bootstrap.php'
+		- 'vendor/*'
+		- '*/Tests/*'
+		- '*/Resources/*'
+		- '*/node_modules/*'
+		- 'Neos.Eel/Classes/AbstractParser.php'
+		- 'Neos.Eel/Classes/EelParser.php'
+		- 'Neos.Eel/Classes/FlowQuery/FizzleParser.php'
+	ignoreErrors:
+		 - '#Unsafe usage of new static\(\).#'
