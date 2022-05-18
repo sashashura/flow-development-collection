@@ -17,7 +17,7 @@ use Neos\Flow\Annotations as Flow;
 class foo
 */
 /*
-class bar */class ClassWithKeywordsInClassBody //class quux
+class bar */class /* oddly placed comment for class */ ClassWithKeywordsInClassBody //class quux
 {
     public function doSomething()
     {

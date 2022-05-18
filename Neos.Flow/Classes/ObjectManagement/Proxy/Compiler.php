@@ -366,6 +366,7 @@ return ' . var_export($this->storedProxyClasses, true) . ';';
                 $classCode = implode(PHP_EOL, $lines);
                 break;
             }
+            // search first T_CLASS token that is not a `Foo::class` class name resolution
             if (is_array($token) && $token[0] === T_CLASS && $previousToken[0] !== T_DOUBLE_COLON) {
                 $classToken = $token;
             }
