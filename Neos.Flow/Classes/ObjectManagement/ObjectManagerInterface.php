@@ -48,16 +48,16 @@ interface ObjectManagerInterface extends ContainerInterface
      * @return object The object instance
      * @api
      */
-    public function get($objectName, ...$constructorArguments);
+    public function get(string $objectName, ...$constructorArguments);
 
     /**
      * This is the PSR-11 ContainerInterface equivalent to `isRegistered`.
      *
-     * @param string $id
+     * @param string $objectName
      * @return bool
      * @see isRegistered
      */
-    public function has(string $id): bool;
+    public function has(string $objectName): bool;
 
     /**
      * Returns true if an object with the given name has already
