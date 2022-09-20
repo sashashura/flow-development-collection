@@ -61,6 +61,7 @@ class AbstractWidgetControllerTest extends UnitTestCase
         $mockActionRequest->expects(self::atLeastOnce())->method('getInternalArgument')->with('__widgetContext')->will(self::returnValue($widgetContext));
 
         $abstractWidgetController = $this->getAccessibleMock(\Neos\FluidAdaptor\Core\Widget\AbstractWidgetController::class, ['resolveActionMethodName', 'initializeActionMethodArguments', 'initializeActionMethodValidators', 'mapRequestArgumentsToControllerArguments', 'detectFormat', 'resolveView', 'callActionMethod']);
+        $abstractWidgetController->method('resolveActionMethodName')->willReturn('indexAction');
         $abstractWidgetController->_set('mvcPropertyMappingConfigurationService', $this->createMock(\Neos\Flow\Mvc\Controller\MvcPropertyMappingConfigurationService::class));
         $mockRouter = $this->getMockBuilder(RouterInterface::class)->getMock();
         $this->inject($abstractWidgetController, 'actionUriBuilderFactory', new ActionUriBuilderFactory($mockRouter));

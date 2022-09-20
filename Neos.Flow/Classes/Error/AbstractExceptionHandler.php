@@ -23,7 +23,6 @@ use Neos\Flow\Mvc\Controller\Arguments;
 use Neos\Flow\Mvc\Controller\ControllerContext;
 use Neos\Flow\Mvc\Routing\UriBuilder;
 use Neos\Flow\Mvc\View\ViewInterface;
-use Neos\Utility\ObjectAccess;
 use Neos\Utility\Arrays;
 use Psr\Log\LoggerInterface;
 
@@ -56,11 +55,7 @@ abstract class AbstractExceptionHandler implements ExceptionHandlerInterface
      *      renderTechnicalDetails: bool,
      *      logException: bool,
      *      renderingGroup?: string,
-     *      variables?: array,
-     *      templatePathAndFilename?: string,
-     *      layoutRootPath?: string,
-     *      partialRootPath?: string,
-     *      format?: string
+     *      variables?: array
      * }
      */
     protected $renderingOptions;
@@ -119,18 +114,18 @@ abstract class AbstractExceptionHandler implements ExceptionHandlerInterface
 
         $this->renderingOptions = $this->resolveCustomRenderingOptions($exception);
 
+        $exceptionWasLogged = false;
         if ($this->throwableStorage instanceof ThrowableStorageInterface && isset($this->renderingOptions['logException']) && $this->renderingOptions['logException']) {
             $message = $this->throwableStorage->logThrowable($exception);
             $this->logger->critical($message);
+            $exceptionWasLogged = true;
         }
 
-        switch (PHP_SAPI) {
-            case 'cli':
-                $this->echoExceptionCli($exception);
-                break;
-            default:
-                $this->echoExceptionWeb($exception);
+        if (PHP_SAPI === 'cli') {
+            $this->echoExceptionCli($exception, $exceptionWasLogged);
         }
+
+        $this->echoExceptionWeb($exception);
     }
 
     /**
@@ -161,7 +156,6 @@ abstract class AbstractExceptionHandler implements ExceptionHandlerInterface
         });
         /** @var ViewInterface $view */
         $view = $viewClassName::createWithOptions($viewOptions);
-        $view = $this->applyLegacyViewOptions($view, $renderingOptions);
 
         $httpRequest = ServerRequest::fromGlobals();
         $request = ActionRequest::fromHttpRequest($httpRequest);
@@ -186,31 +180,6 @@ abstract class AbstractExceptionHandler implements ExceptionHandlerInterface
             'statusMessage' => $statusMessage,
             'referenceCode' => $referenceCode
         ]);
-
-        return $view;
-    }
-
-    /**
-     * Sets legacy "option" properties to the view for backwards compatibility.
-     *
-     * @param ViewInterface $view
-     * @param array $renderingOptions
-     * @return ViewInterface
-     */
-    protected function applyLegacyViewOptions(ViewInterface $view, array $renderingOptions): ViewInterface
-    {
-        if (isset($renderingOptions['templatePathAndFilename'])) {
-            ObjectAccess::setProperty($view, 'templatePathAndFilename', $renderingOptions['templatePathAndFilename']);
-        }
-        if (isset($renderingOptions['layoutRootPath'])) {
-            ObjectAccess::setProperty($view, 'layoutRootPath', $renderingOptions['layoutRootPath']);
-        }
-        if (isset($renderingOptions['partialRootPath'])) {
-            ObjectAccess::setProperty($view, 'partialRootPath', $renderingOptions['partialRootPath']);
-        }
-        if (isset($renderingOptions['format'])) {
-            ObjectAccess::setProperty($view, 'format', $renderingOptions['format']);
-        }
 
         return $view;
     }
@@ -264,17 +233,9 @@ abstract class AbstractExceptionHandler implements ExceptionHandlerInterface
     /**
      * If a renderingGroup was successfully resolved via @see resolveRenderingGroup
      * We will use a custom error view.
-     *
-     * Also check for legacy 'templatePathAndFilename'
-     *
      */
     protected function useCustomErrorView(): bool
     {
-        // for legacy reasons 'templatePathAndFilename' was enough to use the view,
-        // so it could theoretically be used without a 'renderingGroup' (will be deprecated!)
-        if (isset($this->renderingOptions['templatePathAndFilename'])) {
-            return true;
-        }
         return isset($this->renderingOptions['renderingGroup']);
     }
 
@@ -282,9 +243,10 @@ abstract class AbstractExceptionHandler implements ExceptionHandlerInterface
      * Formats and echoes the exception and its previous exceptions (if any) for the command line
      *
      * @param \Throwable $exception
+     * @param bool $exceptionWasLogged
      * @return void
      */
-    protected function echoExceptionCli(\Throwable $exception)
+    protected function echoExceptionCli(\Throwable $exception, bool $exceptionWasLogged)
     {
         $response = new Response();
 
@@ -292,7 +254,11 @@ abstract class AbstractExceptionHandler implements ExceptionHandlerInterface
         $exceptionMessage = $this->renderNestedExceptonsCli($exception, $exceptionMessage);
 
         if ($exception instanceof FlowException) {
-            $exceptionMessage .= PHP_EOL . 'Open <b>Data/Logs/Exceptions/' . $exception->getReferenceCode() . '.txt</b> for a full stack trace.' . PHP_EOL;
+            if ($exceptionWasLogged) {
+                $exceptionMessage .= PHP_EOL . 'Open <b>Data/Logs/Exceptions/' . $exception->getReferenceCode() . '.txt</b> for a full stack trace.' . PHP_EOL;
+            } else {
+                $exceptionMessage .= PHP_EOL . 'The exception stacktrace was not logged, because "logException" is turned off.' . PHP_EOL;
+            }
         }
 
         $response->setContent($exceptionMessage);
